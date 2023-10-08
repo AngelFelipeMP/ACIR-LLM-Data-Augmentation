@@ -5,8 +5,8 @@ MAX_LEN = 24 # 100
 DROPOUT = 0.3
 LR = 3e-5 #5e-6, 1e-5, 3e-5, 5e-5
 BATCH_SIZE = 4 #24 #20
-TRANSFORMERS = ['bert-base-multilingual-uncased']
-# TRANSFORMERS = ['bert-base-multilingual-uncased','xlm-roberta-base']
+#TRANSFORMERS = ['bert-base-multilingual-uncased']
+TRANSFORMERS = ['bert-base-multilingual-uncased','xlm-roberta-base']
 
 N_ROWS=16 #None
 SEED = 17
@@ -19,8 +19,10 @@ DATA_TRAIN_PATH = PACKAGE_PATH + '/' + 'training/EXIST2023_training' + '.json'
 DATA_TEST_PATH = PACKAGE_PATH + '/' + 'test/EXIST2023_test_clean' + '.json'
 LABEL_GOLD_PATH = PACKAGE_PATH + '/' + 'evaluation/golds'
 
+ACIR_DEV_FILE = ['EXIST_dev_M0.csv','EXIST_dev_M1.csv','EXIST_dev_M2.csv']
+
 DATA = 'EXIST2023' 
-DATA_URL = 'Data_link'
+DATA_URL = 'https://drive.google.com/file/d/11WxMMTyZibk6hWNSp2UeVFTllFcgfs52/view?usp=share_link'
 
 LABELS = ['task1', 'task2','task3'] #['task1', 'task2','task3']
 COLUMN_TEXT = 'tweet'

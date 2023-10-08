@@ -1,1 +1,5 @@
 TODO
+# 1) adatp train, test and preds_transformer to the new data (many training datastes)
+# 2) verify inputs and outputs amongs functions and among scripts (train, test, preds_transformer)
+# 3) Test esctipts 
+# 4) verify the data is being saved correctly

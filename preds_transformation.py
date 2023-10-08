@@ -68,12 +68,17 @@ def sample_close_values(dict_preds , possible_preds):
         
     return new_preds
 
-def ensemble(transformers, tasks, logs_path):
+##HACK: add input: collection
+def ensemble(transformers, tasks, logs_path, collection):
+# def ensemble(transformers, tasks, logs_path):
     for task in tasks:
         list_json_preds = []
         # Load the JSON file
         for transformer in transformers:
-            with open(logs_path + '/' + task + '_#####_test_#####_' + transformer + '.json', "r") as f:
+            ##HACK: load dev instead of test
+            # with open(logs_path + '/' + task + '_#####_test_#####_' + transformer + '.json', "r") as f:
+            with open(logs_path + '/' + task + 'training_dev_' + collection + '_' + str(config.EPOCHS) + '_' + transformer + '.json', "r") as f:
+            # with open(logs_path + '/' + task + '_training_dev_' + str(config.EPOCHS) + '_' + transformer + '.json', "r") as f:
                 list_json_preds.append(json.load(f))
         
         # sum preds
@@ -89,7 +94,10 @@ def ensemble(transformers, tasks, logs_path):
             models_preds[index]['soft_label'] = {j: v / len(transformers) for j, v in models_preds[index]['soft_label'].items()}
             
         # Save the dictionary as a JSON file
-        with open(logs_path + '/' + task + '_#####_test_#####' + '_ensemble' + '.json', "w") as f:
+        ##HACK: change name of ensemble files
+        # with open(logs_path + '/' + task + '_#####_test_#####' + '_ensemble' + '.json', "w") as f:
+        with open(logs_path + '/' + task + 'preds_dev_' + collection + '_ensemble' + '.json', "w") as f:
+        # with open(logs_path + '/' + task + '_preds_dev' + '_ensemble' + '.json', "w") as f:
             json.dump(models_preds, f, indent=2)
                 
 
@@ -145,15 +153,15 @@ if __name__ == "__main__":
                     config.LABELS, 
                     config.LOGS_PATH)
     
+    ##HACK: Commend no necessary predictions
+    # round_to_closes_value(config.TRANSFORMERS, 
+    #                         config.LABELS, 
+    #                         config.LOGS_PATH,
+    #                         'ensemble')
     
-    round_to_closes_value(config.TRANSFORMERS, 
-                            config.LABELS, 
-                            config.LOGS_PATH,
-                            'ensemble')
     
-    
-    get_hard_preds(config.TRANSFORMERS, 
-                        config.LABELS, 
-                        config.LOGS_PATH,
-                        'ensemble')
+    # get_hard_preds(config.TRANSFORMERS, 
+    #                     config.LABELS, 
+    #                     config.LOGS_PATH,
+    #                     'ensemble')
     
