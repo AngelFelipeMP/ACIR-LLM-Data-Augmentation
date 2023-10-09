@@ -33,8 +33,8 @@ DATASET_DEV = 'EXIST2023_dev.csv'
 DATASET_TEST = 'EXIST2023_test.csv'
 DATASET_TRAIN_DEV = 'EXIST2023_training-dev.csv'
 
-ACIR_TRAIN_FILE = ['training_M0','training_M1','training_M2','training_M0_M1','training_M0_M2','training_M0_M1_M2']
-# ACIR_TRAIN_FILE = ['training_M1']
+# ACIR_TRAIN_FILE = ['training_M0','training_M1','training_M2','training_M0_M1','training_M0_M2','training_M0_M1_M2']
+ACIR_TRAIN_FILE = ['training_M1']
 # ACIR_DEV_FILE = ['dev_M0','dev_M1','dev_M2']
 ACIR_DEV_FILE = ['dev_M0']
 

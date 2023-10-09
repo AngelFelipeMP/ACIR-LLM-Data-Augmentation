@@ -68,17 +68,16 @@ def sample_close_values(dict_preds , possible_preds):
         
     return new_preds
 
-##HACK: add input: collection
-def ensemble(transformers, tasks, logs_path, collection):
+##HACK: add input: train_data, pred_data
+def ensemble(transformers, tasks, logs_path, train_data, pred_data):
 # def ensemble(transformers, tasks, logs_path):
     for task in tasks:
         list_json_preds = []
         # Load the JSON file
         for transformer in transformers:
-            ##HACK: load dev instead of test
+            ##HACK: loaing new pred data
             # with open(logs_path + '/' + task + '_#####_test_#####_' + transformer + '.json', "r") as f:
-            with open(logs_path + '/' + task + 'training_dev_' + collection + '_' + str(config.EPOCHS) + '_' + transformer + '.json', "r") as f:
-            # with open(logs_path + '/' + task + '_training_dev_' + str(config.EPOCHS) + '_' + transformer + '.json', "r") as f:
+            with open(logs_path + '/' + task + '_' + train_data + '_' + pred_data + '_#####_' + transformer + '.json', "r") as f:
                 list_json_preds.append(json.load(f))
         
         # sum preds
@@ -96,8 +95,7 @@ def ensemble(transformers, tasks, logs_path, collection):
         # Save the dictionary as a JSON file
         ##HACK: change name of ensemble files
         # with open(logs_path + '/' + task + '_#####_test_#####' + '_ensemble' + '.json', "w") as f:
-        with open(logs_path + '/' + task + 'preds_dev_' + collection + '_ensemble' + '.json', "w") as f:
-        # with open(logs_path + '/' + task + '_preds_dev' + '_ensemble' + '.json', "w") as f:
+        with open(logs_path + '/' + task + '_' + train_data + '_' + pred_data + '_ensemble' + '.json', "w") as f:
             json.dump(models_preds, f, indent=2)
                 
 
@@ -148,12 +146,23 @@ def get_hard_preds(transformers, tasks, logs_path, ensemble=''):
             with open(logs_path + '/' + task + '_#####_test_#####_' + model + '_plus_hard-preds' +'.json', "w") as f:
                 json.dump(json_preds, f, indent=2)
         
-if __name__ == "__main__":    
-    ensemble(config.TRANSFORMERS, 
-                    config.LABELS, 
-                    config.LOGS_PATH)
+if __name__ == "__main__":
     
-    ##HACK: Commend no necessary predictions
+    ##HACK: new code to ensemble
+    for train_data in config.ACIR_TRAIN_FILE:
+        for pred_data in config.ACIR_DEV_FILE:
+    
+            ensemble(config.TRANSFORMERS, 
+                            config.LABELS, 
+                            config.LOGS_PATH,
+                            train_data, 
+                            pred_data)
+    
+    ##HACK: comment original code
+    # ensemble(config.TRANSFORMERS, 
+    #                 config.LABELS, 
+    #                 config.LOGS_PATH)
+    
     # round_to_closes_value(config.TRANSFORMERS, 
     #                         config.LABELS, 
     #                         config.LOGS_PATH,
