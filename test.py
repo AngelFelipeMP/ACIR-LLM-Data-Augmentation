@@ -14,8 +14,8 @@ warnings.filterwarnings('ignore')
 from transformers import logging
 logging.set_verbosity_error()
 
-##HACK: add collection
-def test(df_test, task, transformer, max_len, batch_size, drop_out, collection):
+##HACK: add train_data
+def test(df_test, task, transformer, max_len, batch_size, drop_out, train_data, data_for_pred):
 # def test(df_test, task, transformer, max_len, batch_size, drop_out):
     
     train_dataset = dataset.TransformerDataset_Test(
@@ -37,20 +37,22 @@ def test(df_test, task, transformer, max_len, batch_size, drop_out, collection):
     # model = torch.load(config.LOGS_PATH + '/model_' + task + '_training-dev_' + transfomer + '.pt')
     # if config.DEVICE == 'max':
     #     model = torch.nn.DataParallel(model, device_ids=[i for i in range(torch.cuda.device_count())])
-    device = 'cuda:0'
-    #TODO: add diferent models for each task
-    #TODO: models must have train data on the file's name
+    
     ##HACK:
+    # device = 'cuda:0'
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') if not config.DEVICE or config.DEVICE == 'max' else config.DEVICE
+    
+    
+    ##HACK: change name load models
     # model = torch.load(config.LOGS_PATH + '/model_' + task + '_training-dev_' + transfomer + '.pt')
-    model = torch.load(config.LOGS_PATH + '/model_' + task + '_' + collection + '_' + transfomer + '.pt')
+    model = torch.load(config.LOGS_PATH + '/model_' + task + '_' + train_data + '_' + transfomer + '.pt')
     model.to(device)
     
     # prediction
     no_train, pred_train = engine.test_fn(train_data_loader, model, device)
-    #TODO: preds must have train data ans test data on the file's name
-    ##HACK:
+    ##HACK: add trained data into the preditions file name
     # save_preds(no_train, pred_train, df_test, task, '#####', 'test', '#####', transformer)
-    save_preds(no_train, pred_train, df_test, task, collection, 'test', '#####', transformer)
+    save_preds(no_train, pred_train, df_test, task, train_data,  data_for_pred, '#####', transformer)
     
     return
 
@@ -60,34 +62,36 @@ if __name__ == "__main__":
     torch.manual_seed(config.SEED)
     torch.cuda.manual_seed_all(config.SEED)
 
-    for transfomer in tqdm(config.TRANSFORMERS, desc='TRANSFORMERS', position=0):
-        for task in tqdm(config.LABELS, desc='TASKS', position=1):
-            ##HACK: add new dev datasets
-            for data_for_pred in config.ACIR_DEV_FILE:
-                collenction = data_for_pred.split('_')[-1].split('.')[0]
-            
-                ##HACK: swap config.DATASET_TEST with data_for_pred
-                # df_test = pd.read_csv(config.DATA_PATH + '/' + config.DATASET_TEST, index_col=None).iloc[:config.N_ROWS]
-                df_test = pd.read_csv(config.DATA_PATH + '/' + data_for_pred, index_col=None).iloc[:config.N_ROWS]
+    for train_data in tqdm(config.ACIR_TRAIN_FILE, desc='TRAIN_DATA', position=0):
+        
+        for transfomer in tqdm(config.TRANSFORMERS, desc='TRANSFORMERS', position=1):
+            for task in tqdm(config.LABELS, desc='TASKS', position=2):
+                ##HACK: add new dev datasets
+                for data_for_pred in tqdm(config.ACIR_DEV_FILE, desc='PRED_DATA', position=3):
                 
-                if task != 'task1':
-                    #TODO: preds must have train data ans test data on the file's name
-                    ##HACK:
-                    # df_task1 = pd.read_json(config.LOGS_PATH + '/task1_#####_test_#####_' + transfomer + '.json', orient='index')
-                    df_task1 = pd.read_json(config.LOGS_PATH + '/task1' + '_' + collenction + '_test_#####_' + transfomer + '.json', orient='index')   
-                    df_task1['NO_value'] = df_task1['soft_label'].apply(lambda x: x['NO'])
-                    df_task1 = df_task1.reset_index()
-            
-                    df_test = pd.concat([df_test, df_task1], axis=1)
+                    ##HACK: swap config.DATASET_TEST with data_for_pred
+                    # df_test = pd.read_csv(config.DATA_PATH + '/' + config.DATASET_TEST, index_col=None).iloc[:config.N_ROWS]
+                    df_test = pd.read_csv(config.DATA_PATH + '/EXIST2023_' + data_for_pred + '.csv', index_col=None).iloc[:config.N_ROWS]
                     
-                tqdm.write(f'\nTask: {task} Data: Test  Transfomer: {transfomer.split("/")[-1]} Max_len: {config.MAX_LEN} Batch_size: {config.BATCH_SIZE}')
+                    if task != 'task1':
+                        ##HACK: adpt name for the loading files 
+                        df_task1 = pd.read_json(config.LOGS_PATH + '/task1' + '_' + train_data + '_' + data_for_pred + '_#####_' + transfomer + '.json', orient='index')
+                        # df_task1 = pd.read_json(config.LOGS_PATH + '/task1_#####_test_#####_' + transfomer + '.json', orient='index')
+                        df_task1['NO_value'] = df_task1['soft_label'].apply(lambda x: x['NO'])
+                        df_task1 = df_task1.reset_index()
                 
-                test(df_test,
-                        task,
-                        transfomer,
-                        config.MAX_LEN,
-                        config.BATCH_SIZE,
-                        config.DROPOUT,
-                        ##HACK: add collection
-                        collenction
-                )
+                        df_test = pd.concat([df_test, df_task1], axis=1)
+                        
+                    # tqdm.write(f'\nTask: {task} Data: Test  Transfomer: {transfomer.split("/")[-1]} Max_len: {config.MAX_LEN} Batch_size: {config.BATCH_SIZE}')
+                    tqdm.write(f'\nTask: {task} Data_train: {train_data} Data_Pred: {data_for_pred}  Transfomer: {transfomer.split("/")[-1]} Max_len: {config.MAX_LEN} Batch_size: {config.BATCH_SIZE}')
+                    
+                    test(df_test,
+                            task,
+                            transfomer,
+                            config.MAX_LEN,
+                            config.BATCH_SIZE,
+                            config.DROPOUT,
+                            ##HACK: add bellow
+                            train_data,
+                            data_for_pred
+                    )
