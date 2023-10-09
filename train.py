@@ -34,7 +34,7 @@ def train(df_train, task, epochs, transformer, max_len, batch_size, lr, drop_out
         num_workers = config.TRAIN_WORKERS
     )
     
-    ##HACK: commetn df_val data loading
+    ##HACK: remove df_val data loading
     # val_dataset = dataset.TransformerDataset(
     #     text=df_val[config.COLUMN_TEXT].values,
     #     target=df_val[config.COLUMN_LABELS + task].values,
@@ -55,8 +55,7 @@ def train(df_train, task, epochs, transformer, max_len, batch_size, lr, drop_out
         model = torch.nn.DataParallel(model, device_ids=[i for i in range(torch.cuda.device_count())])
     model.to(device)
     
-    #NOTE: I must check appropriate no_decay for LLaMA
-    #NOTE: differte learning rates for LLaMA and classifier
+    
     param_optimizer = list(model.named_parameters())
     no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
     optimizer_parameters = [
@@ -74,8 +73,8 @@ def train(df_train, task, epochs, transformer, max_len, batch_size, lr, drop_out
     for epoch in range(1, epochs+1):
         
         no_train, pred_train, _ , loss_train = engine.train_fn(train_data_loader, model, optimizer, device, scheduler)
-        save_preds(no_train, pred_train, df_train, task, training_data, 'training', epoch, transformer)
-        ##HACK: ICM-soft is not calculated for training data
+        ##HACK: 1) ICM-soft is not calculated for training data and 2) save training preds
+        # save_preds(no_train, pred_train, df_train, task, training_data, 'training', epoch, transformer)
         # icm_soft_train = eval_preds(task, training_data, 'training', epoch, transformer)
         
         ##HACK: remove df_val preds and evaluation
@@ -102,7 +101,7 @@ def train(df_train, task, epochs, transformer, max_len, batch_size, lr, drop_out
         
         ##HACK: remove icm_soft_train, icm_soft_val and loss
         # tqdm.write("Epoch {}/{} ICM-soft_training = {:.3f} loss_training = {:.3f} ICM-soft_val = {:.3f}  loss_val = {:.3f}".format(epoch, epochs, icm_soft_train, loss_train, icm_soft_val, loss_val))
-        tqdm.write("Epoch {}/{} loss_training = {:.3f}").format(epoch, epochs, loss_train)
+        tqdm.write("Epoch {}/{} loss_training = {:.3f}".format(epoch, epochs, loss_train))
 
         # save models weights
         path_model_save = config.LOGS_PATH + '/model' + '_' + task + '_' + training_data + '_' + transformer.split("/")[-1] + '.pt'
@@ -121,72 +120,84 @@ def train(df_train, task, epochs, transformer, max_len, batch_size, lr, drop_out
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--training_data', type=str, help='Datasets to train the models')
-    args = parser.parse_args()
+    ##HACK: Now we have fix data for training
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('--training_data', type=str, help='Datasets to train the models')
+    # args = parser.parse_args()
     
-    if args.training_data == 'training':
-        datasets = config.DATASET_TRAIN
+    # if args.training_data == 'training':
+    #     datasets = config.DATASET_TRAIN
         
-    elif args.training_data == 'training-dev':
-        datasets = config.DATASET_TRAIN_DEV
+    # elif args.training_data == 'training-dev':
+    #     datasets = config.DATASET_TRAIN_DEV
     
-    elif not args.training_data:
-        print('Specifying --training_data is required')
-        exit(1)
+    # elif not args.training_data:
+    #     print('Specifying --training_data is required')
+    #     exit(1)
     
-    else:
-        print('Specifying --training_data training OR training-dev')
-        exit(1)
+    # else:
+    #     print('Specifying --training_data training OR training-dev')
+    #     exit(1)
 
     random.seed(config.SEED)
     np.random.seed(config.SEED)
     torch.manual_seed(config.SEED)
     torch.cuda.manual_seed_all(config.SEED)
 
-    df_train = pd.read_csv(config.DATA_PATH + '/' + datasets, index_col=None).iloc[:config.N_ROWS]
-    df_train['NO_value'] = df_train['soft_label_task1'].apply(lambda x: eval(x)['NO'])
-    
-    ##HACK: df_val is not used
-    # df_val = pd.read_csv(config.DATA_PATH + '/' + config.DATASET_DEV, index_col=None).iloc[:config.N_ROWS]
-    # df_val['NO_value'] = df_val['soft_label_task1'].apply(lambda x: eval(x)['NO']) 
-
-    for transfomer in tqdm(config.TRANSFORMERS, desc='TRANSFORMERS', position=0):
-        for task in tqdm(config.LABELS, desc='TASKS', position=1):
-            
-            ##HACK: epocs
-            epochs = config.EPOCHS
-            # if args.training_data == 'training-dev':
-            #     df_info = pd.read_csv(config.LOGS_PATH + '/training_' + task + '_' + transfomer + '.csv')
-            #     epochs = df_info.at[df_info['icm_soft_val'].idxmax(), 'epoch']
-            # else:
-            #     epochs = config.EPOCHS
-            
-            df_results = pd.DataFrame(columns=['task',
-                                    'epoch',
-                                    'transformer',
-                                    'max_len',
-                                    'batch_size',
-                                    'lr',
-                                    'dropout',
-                                    'icm_soft_train',
-                                    'loss_train',
-                                    'icm_soft_val',
-                                    'loss_val'])
+    ##HACK: 1) Use new training datasets and 2) soft_labels_task1 instead of soft_label_task1
+    for train_data in tqdm(config.ACIR_TRAIN_FILE, desc='DATASETS', position=0):
+    # df_train = pd.read_csv(config.DATA_PATH + '/' + datasets, index_col=None).iloc[:config.N_ROWS]
+    # df_train['NO_value'] = df_train['soft_label_task1'].apply(lambda x: eval(x)['NO'])
+        df_train = pd.read_csv(config.DATA_PATH + '/EXIST2023_' + train_data + '.csv', index_col=None).iloc[:config.N_ROWS]
+        df_train['NO_value'] = df_train['soft_labels_task1'].apply(lambda x: eval(x)['NO'])
         
-            tqdm.write(f'\nTask: {task} Data: {args.training_data} Transfomer: {transfomer.split("/")[-1]} Max_len: {config.MAX_LEN} Batch_size: {config.BATCH_SIZE} Dropout: {config.DROPOUT} lr: {config.LR}')
-            
-            df_results = train(df_train,
-                                # df_val,
-                                task,
-                                epochs,
-                                transfomer,
-                                config.MAX_LEN,
-                                config.BATCH_SIZE,
-                                config.LR,
-                                config.DROPOUT,
-                                df_results,
-                                args.training_data
-            )
+        ##HACK: df_val is not used
+        # df_val = pd.read_csv(config.DATA_PATH + '/' + config.DATASET_DEV, index_col=None).iloc[:config.N_ROWS]
+        # df_val['NO_value'] = df_val['soft_label_task1'].apply(lambda x: eval(x)['NO']) 
+
+        for transfomer in tqdm(config.TRANSFORMERS, desc='TRANSFORMERS', position=1):
+            for task in tqdm(config.LABELS, desc='TASKS', position=2):
                 
-            df_results.to_csv(config.LOGS_PATH + '/' + args.training_data + '_' + task + '_' + transfomer + '.csv', index=False)
+                ##HACK: epocs
+                epochs = config.EPOCHS
+                # if args.training_data == 'training-dev':
+                #     df_info = pd.read_csv(config.LOGS_PATH + '/training_' + task + '_' + transfomer + '.csv')
+                #     epochs = df_info.at[df_info['icm_soft_val'].idxmax(), 'epoch']
+                # else:
+                #     epochs = config.EPOCHS
+                
+                ##HACK: remove icm_soft_train, icm_soft_val and loss
+                df_results = pd.DataFrame(columns=['task',
+                                        'epoch',
+                                        'transformer',
+                                        'max_len',
+                                        'batch_size',
+                                        'lr',
+                                        'dropout',
+                                        # 'icm_soft_train',
+                                        'loss_train',
+                                        # 'icm_soft_val',
+                                        # 'loss_val'
+                                        ])
+                ##HACK:
+                # tqdm.write(f'\nTask: {task} Data: {args.training_data} Transfomer: {transfomer.split("/")[-1]} Max_len: {config.MAX_LEN} Batch_size: {config.BATCH_SIZE} Dropout: {config.DROPOUT} lr: {config.LR}')
+                tqdm.write(f'\nTask: {task} Data: {train_data} Transfomer: {transfomer.split("/")[-1]} Max_len: {config.MAX_LEN} Batch_size: {config.BATCH_SIZE} Dropout: {config.DROPOUT} lr: {config.LR}')
+                
+                ##HACK:
+                df_results = train(df_train,
+                                    # df_val,
+                                    task,
+                                    epochs,
+                                    transfomer,
+                                    config.MAX_LEN,
+                                    config.BATCH_SIZE,
+                                    config.LR,
+                                    config.DROPOUT,
+                                    df_results,
+                                    # args.training_data
+                                    train_data
+                )
+                
+                ##HACK: change file name
+                # df_results.to_csv(config.LOGS_PATH + '/' + args.training_data + '_' + task + '_' + transfomer + '.csv', index=False)
+                df_results.to_csv(config.LOGS_PATH + '/' + train_data + '_' + task + '_' + transfomer + '.csv', index=False)
